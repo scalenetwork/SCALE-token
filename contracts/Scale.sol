@@ -41,7 +41,7 @@ contract Scale is MintableToken, HasNoEther {
 
     // -- Pool Minting Rates and Percentages -- //
     // Pool for Scale distribution to rewards pool
-    // Set to 0 to prohibit issuing to the pool before it is assigned
+    // Set to address 0 to prohibit minting to the pool before it is assigned
     address public pool = address(0);
 
     // Pool and Owner minted tokens per second
@@ -85,7 +85,8 @@ contract Scale is MintableToken, HasNoEther {
     mapping (address => AddressStakeData) public stakeBalances;
 
     // -- Inflation -- //
-    // Inflation rate begins at 100% per year and decreases by 15% per year until it reaches 10% where it decreases by 0.5% per year
+    // Inflation rate begins at 100% per year and decreases by 30% per year until it 
+    // reaches 10% where it decreases by 0.5% per year, stopping at 1% per year.
     uint256 inflationRate = 1000;
 
     // Used to manage when to inflate. Allowed to inflate once per year until the rate reaches 1%.
@@ -101,9 +102,7 @@ contract Scale is MintableToken, HasNoEther {
     /// Scale Token Functionality
     //////////////////////////////////////////////////
 
-    /** 
-     * @dev Scale token constructor
-     */
+    /// @dev Scale token constructor
     constructor() public {
         // Assign owner
         owner = msg.sender;
@@ -139,17 +138,16 @@ contract Scale is MintableToken, HasNoEther {
     /////////////
     // Inflation
     /////////////
-    /** 
-     * @dev the inflation rate begins at 100% and decreases by 15% every year until it reaches 10%
-     * at 10% the rate begins to decrease by 0.5% until it reaches 1%
-     */
+
+    /// @dev the inflation rate begins at 100% and decreases by 30% every year until it reaches 10%
+    /// at 10% the rate begins to decrease by 0.5% until it reaches 1%
     function adjustInflationRate() private {
 
 
       // Make sure adjustInflationRate cannot be called for at least another year
       lastInflationUpdate = now;
 
-      // Decrease inflation rate by 15% each year
+      // Decrease inflation rate by 30% each year
       if (inflationRate > 100) {
 
         inflationRate = inflationRate.sub(300);
@@ -161,7 +159,6 @@ contract Scale is MintableToken, HasNoEther {
       }
 
       // Calculate new mint amount of Scale that should be created per year.
-      // Example Inflation Past Year 1 for the poolMintAmount: 16M * 0.85 * 0.7 = 9,520,000
       poolMintAmount = totalSupply.mul(inflationRate).div(1000).mul(poolPercentage).div(100);
       ownerMintAmount = totalSupply.mul(inflationRate).div(1000).mul(ownerPercentage).div(100);
       stakingMintAmount = totalSupply.mul(inflationRate).div(1000).mul(stakingPercentage).div(100);
@@ -171,9 +168,8 @@ contract Scale is MintableToken, HasNoEther {
         ownerMintRate = calculateFraction(ownerMintAmount, 31536000 ether, decimals);
         stakingMintRate = calculateFraction(stakingMintAmount, 31536000 ether, decimals);
     }
-    /** 
-     * @dev anyone can call this function to update the inflation rate yearly
-     */
+
+    /// @dev anyone can call this function to update the inflation rate yearly
     function updateInflationRate() public {
 
       // Require 1 year to have passed for every inflation adjustment
@@ -187,34 +183,30 @@ contract Scale is MintableToken, HasNoEther {
     // Staking
     /////////////
 
-    /** 
-     * @dev staking function which allows users to stake an amount of tokens to gain interest for up to 30 days
-     * @param _stakeAmount how many tokens a user wants to stake
-     */
+    /// @dev staking function which allows users to stake an amount of tokens to gain interest for up to 365 days
+    /// @param _stakeAmount how many tokens a user wants to stake
     function stakeScale(uint _stakeAmount) external {
 
         // Require that tokens are staked successfully
         require(stake(msg.sender, _stakeAmount));
     }
-    /**
-     * @dev stake for a seperate address
-     * @param _stakeAmount how many tokens a user wants to stake
-     */
+
+    /// @dev stake for a seperate address
+    /// @param _stakeAmount how many tokens a user wants to stake
     function stakeFor(address _user, uint _stakeAmount) external {
 
       // You can only stake tokens for another user if they have not already staked tokens
       require(stakeBalances[_user].stakeBalance == 0);
 
-      // Transfer Scale from to the user
+      // Transfer Scale from to the msg.sender to the user
       transfer( _user, _stakeAmount);
 
       // Stake for the user
       stake(_user, _stakeAmount);
     }
-    /**
-      * @dev stake function reduces the user's total available balance and adds it to their staking balance
-      * @param _value how many tokens a user wants to stake
-      */
+
+    /// @dev stake function reduces the user's total available balance and adds it to their staking balance
+    /// @param _value how many tokens a user wants to stake
     function stake(address _user, uint256 _value) private returns (bool success) {
 
         // You can only stake as many tokens as you have
@@ -242,11 +234,10 @@ contract Scale is MintableToken, HasNoEther {
 
         return true;
     }
-    /**
-      * @dev returns how much Scale a user has earned so far
-      * @param _now is passed in to allow for a gas-free analysis
-      * @return staking gains based on the amount of time passed since staking began
-      */
+
+    /// @dev returns how much Scale a user has earned so far
+    /// @param _now is passed in to allow for a gas-free analysis
+    /// @return staking gains based on the amount of time passed since staking began
     function getStakingGains(uint _now) view public returns (uint) {
 
         if (stakeBalances[msg.sender].stakeBalance == 0) {
@@ -256,11 +247,9 @@ contract Scale is MintableToken, HasNoEther {
 
         return calculateStakeGains(_now);
     }
-    
-    /**
-     * @dev allows users to reclaim any staked tokens
-     * @return bool on success
-     */
+
+    /// @dev allows users to reclaim any staked tokens
+    /// @return bool on success
     function unstake() external returns (bool) {
 
         // Require that there was some amount vested
@@ -293,11 +282,9 @@ contract Scale is MintableToken, HasNoEther {
         return true;
     }
 
-    /**
-     * @dev Helper function to claimStake that modularizes the minting via staking calculation
-     * @param _now when the user stopped staking. Passed in as a variable to allow for checking without using gas from the getStakingGains function.
-     * @return uint for total coins to be minted
-     */
+    /// @dev Helper function to claimStake that modularizes the minting via staking calculation
+    /// @param _now when the user stopped staking. Passed in as a variable to allow for checking without using gas from the getStakingGains function.
+    /// @return uint for total coins to be minted
     function calculateStakeGains(uint _now) view private returns (uint mintTotal)  {
 
       uint _nowAsTimingVariable = _now.div(timingVariable);    // Today as a unique value in unix time
@@ -350,9 +337,8 @@ contract Scale is MintableToken, HasNoEther {
 
         return  _tokensToMint;
     }
-     /**
-      * @dev set the new totalStakingHistory mapping to the current timestamp and totalScaleStaked
-      */
+
+    /// @dev set the new totalStakingHistory mapping to the current timestamp and totalScaleStaked
     function setTotalStakingHistory() private {
 
       // Get now in terms of the variable staking accuracy (days in Scale's case)
@@ -362,10 +348,8 @@ contract Scale is MintableToken, HasNoEther {
       totalStakingHistory[_nowAsTimingVariable] = totalScaleStaked;
     }
 
-    /**
-      * @dev Allows user to check their staked balance
-      * @return staked balance
-      */
+    /// @dev Allows user to check their staked balance
+    /// @return staked balance
     function getStakedBalance() view external returns (uint stakedBalance) {
 
         return stakeBalances[msg.sender].stakeBalance;
@@ -375,9 +359,7 @@ contract Scale is MintableToken, HasNoEther {
     // Scale Owner Claiming
     /////////////
 
-    /**
-     * @dev allows contract owner to claim their mint
-     */
+    /// @dev allows contract owner to claim their mint
     function ownerClaim() external onlyOwner {
 
         require(now > ownerTimeLastMinted);
@@ -407,9 +389,7 @@ contract Scale is MintableToken, HasNoEther {
     // Scale Pool Distribution
     ////////////////////////////////
 
-    /**
-      * @dev anyone can call this function that mints Scale to the pool dedicated to Scale distribution to rewards pool
-      */
+    /// @dev anyone can call this function that mints Scale to the pool dedicated to Scale distribution to rewards pool
     function poolIssue() public {
 
         // Do not allow tokens to be minted to the pool until the pool is set
@@ -423,15 +403,15 @@ contract Scale is MintableToken, HasNoEther {
         uint _tokenMintCount; // The amount of new tokens to mint
         bool _mintingSuccess; // The success of minting the new Scale tokens
 
-        // Calculate the number of seconds that have passed since the owner last took a claim
+        // Calculate the number of seconds that have passed since the pool last took a claim
         _timePassedSinceLastMint = now.sub(poolTimeLastMinted);
 
         assert(_timePassedSinceLastMint > 0);
 
-        // Determine the token mint amount, determined from the number of seconds passed and the ownerMintRate
+        // Determine the token mint amount, determined from the number of seconds passed and the poolMintRate
         _tokenMintCount = calculateMintTotal(_timePassedSinceLastMint, poolMintRate);
 
-        // Mint the owner's tokens; this also increases totalSupply
+        // Mint the pool's tokens; this also increases totalSupply
         _mintingSuccess = mint(pool, _tokenMintCount);
 
         require(_mintingSuccess);
@@ -439,10 +419,9 @@ contract Scale is MintableToken, HasNoEther {
         // New minting was a success! Set last time minted to current block.timestamp (now)
         poolTimeLastMinted = now;
     }
-    /**
-     * @dev sets the address for the rewards pool
-     * @param _newAddress pool Address
-     */
+
+    /// @dev sets the address for the rewards pool
+    /// @param _newAddress pool Address
     function setPool(address _newAddress) public onlyOwner {
 
         pool = _newAddress;
@@ -451,13 +430,12 @@ contract Scale is MintableToken, HasNoEther {
     ////////////////////////////////
     // Helper Functions
     ////////////////////////////////
-    /**
-      * @dev calculateFraction allows us to better handle the Solidity ugliness of not having decimals as a native type
-      * @param _numerator is the top part of the fraction we are calculating
-      * @param _denominator is the bottom part of the fraction we are calculating
-      * @param _precision tells the function how many significant digits to calculate out to
-      * @return quotient returns the result of our fraction calculation
-      */
+
+    /// @dev calculateFraction allows us to better handle the Solidity ugliness of not having decimals as a native type
+    /// @param _numerator is the top part of the fraction we are calculating
+    /// @param _denominator is the bottom part of the fraction we are calculating
+    /// @param _precision tells the function how many significant digits to calculate out to
+    /// @return quotient returns the result of our fraction calculation
     function calculateFraction(uint _numerator, uint _denominator, uint _precision) pure private returns(uint quotient) {
         // Take passed value and expand it to the required precision
         _numerator = _numerator.mul(10 ** (_precision + 1));
@@ -466,11 +444,10 @@ contract Scale is MintableToken, HasNoEther {
         return (_quotient);
     }
 
-    /**
-      * @dev Determines the amount of Scale to create based on the number of seconds that have passed
-      * @param _timeInSeconds is the time passed in seconds to mint for
-      * @return uint with the calculated number of new tokens to mint
-     */
+    /// @dev Determines the amount of Scale to create based on the number of seconds that have passed
+    /// @param _timeInSeconds is the time passed in seconds to mint for
+    /// @param _mintRate the mint rate per second 
+    /// @return uint with the calculated number of new tokens to mint
     function calculateMintTotal(uint _timeInSeconds, uint _mintRate) pure private returns(uint mintAmount) {
         // Calculates the amount of tokens to mint based upon the number of seconds passed
         return(_timeInSeconds.mul(_mintRate));
