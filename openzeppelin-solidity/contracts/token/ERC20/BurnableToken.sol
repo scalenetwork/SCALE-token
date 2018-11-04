@@ -25,7 +25,7 @@ contract BurnableToken is BasicToken {
     // sender's balance is greater than the totalSupply, which *should* be an assertion failure
 
     balances[_who] = balances[_who].sub(_value);
-    totalSupply_ = totalSupply_.sub(_value);
+    totalSupply = totalSupply.sub(_value);
     emit Burn(_who, _value);
     emit Transfer(_who, address(0), _value);
   }
